@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Chat</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src='/socket.io/socket.io.js'></script>
+	<style>
+		#messageArea{
+			display: none;
+		}
+		.text-align-center{
+			text-align: center;
+		}
+		@media (min-width: 768px) {
+		.bd-placeholder-img-lg {
+		    font-size: 3.5rem;
+			}
+		}
+	</style>
+</head>
+<body>
+	<nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="margin-bottom: 50px; ">
+		<h1 class="h2 navbar-brand mr-auto mr-lg-0">MySimpleChat!</h1>
+		<div class="navbar-collapse offcanvas-collapse" id="navbarsExampleDefault">
+		
+		</div>
+	</nav>	
+	<div class="container">
+		<div id="userFormArea" class="row">
+			<main role="main" class="container text-align-center" style="width: 25%;">
+				<form  id="userForm" class="form-signin">
+		 	 		<img class="mb-4" src="icon.png" width="72" height="72">
+		 	 		<h1 class="h3 mb-3 font-weight-normal">Welcome to MySimpleChat!</h1>
+			 		<br/>
+		 	 		<input type="text" id="username" class="form-control" placeholder="EnterName">
+			 		<br/>
+		 	 		<input class="btn btn-lg btn-primary btn-block" type="submit" value="Join">
+		 	 		<p class="mt-5 mb-3 text-muted">© 2019</p>
+				</form>
+			</main>
+		</div>
+	
+		<div id="messageArea" class="row">
+			<div class="container">
+				<div class="col-md-3" style="float: left">
+					<div class="my-3 p-3 bg-white rounded shadow-sm well">
+						<h4>Online Users</h4>
+						<ul class="list-group" id="users" style="height: 400px; overflow: auto"></ul>
+					</div>
+				</div>
+				<div class="col-md-8"  style="float: left">
+					<div class="d-flex align-items-center p-3 my-3 text-white-50 bg-purple rounded shadow-sm" style="background: #007bff">
+	    				<div class="lh-100">
+	    	  				<h6 class="mb-0 text-white lh-100">Messages</h6>
+	 					</div>
+	 				</div>
+					<div class="chat" id="chat">
+						<div class="chat-history my-3 p-3 bg-white rounded shadow-sm well" style="height: 350px; overflow: auto">
+						</div>
+					</div>
+	
+					<form id="messageForm" class="form-inline my-2 my-lg-0">
+						<div class="form-group" style="width: 100%">
+							<!--<textarea placeholder="WriteMessange" class="form-control  mr-sm-2" id="message" style="width: 80%"></textarea>-->
+							<input class="form-control mr-sm-2" type="text" id="message" placeholder="WriteMessange" style="width: 80%">
+							<br/>
+							<input type="submit" class="btn btn-outline-success my-2 my-sm-0" value="Send Message" style="width: 18%">
+						</div>
+					</form>
+
+					<div style="height: 60px"></div>
+				</div>
+			</div>
+		</div>
+
+
+
+	</div>
+
+	<script>
+		$(function () {
+			var socket = io.connect('http://localhost:7777');
+
+			var $messageForm = $('#messageForm');
+			var $message = $('#message');
+			var $chat =  $('#chat');
+			var $messageArea = $('#messageArea');
+			var $userFormArea = $('#userFormArea');
+			var $userForm = $('#userForm');
+			var $users = $('#users');
+			var $username = $('#username');
+
+
+
+			socket.on('new message', addMessange);
+			
+			$messageForm.submit(function (e){
+				e.preventDefault();
+				
+				if($message.val().trim() !== ''){
+					socket.emit('send message', $message.val().trim());
+					$message.val('');
+				}	
+			});
+
+
+			$userForm.submit(function (e){
+				e.preventDefault();
+				
+				if($username.val().trim() !== ''){
+					socket.emit('new user', $username.val().trim(), function (data){
+						if(data){
+							$userFormArea.hide();
+							$messageArea.show();
+						}
+					});
+					$username.val('');
+				}	
+			});
+
+			socket.on('get users', function (data){
+				var html = '';
+				for (var i = 0; i < data.users.length; i++) {
+					if(data.users[i] == data.you){
+						html += '<li class="list-group-item">@' + data.users[i] + ' (you)</li>';
+					}
+					else{
+						html += '<li class="list-group-item">@' + data.users[i] + '</li>';
+					}
+				}
+				$users.html(html);
+			})
+
+			function encodeHTML (str){
+        		return $('<div />').text(str).html();
+    		}
+
+			function addMessange(message){
+				message.user  = encodeHTML(message.user);
+        		message.msg   = encodeHTML(message.msg);
+				var html = `
+					<div class="media pt-3" style="color: #343a40;">
+				      	<svg class="bd-placeholder-img mr-2 rounded" width="7" height="7">
+				      		<rect width="100%" height="100%" fill="#28a745">
+				        </svg>
+				      		<p class="media-body pb-2 mb-0 small lh-125 border-bottom border-gray text-align-left">
+				        		<strong class=" pb-1 d-block text-gray-dark">@${message.user}</strong>
+				        		${message.msg}
+				      		</p>
+	    			</div>
+				`;
+				$(html).hide().appendTo('.chat-history').slideDown(200);
+				$(".chat-history").animate({ scrollTop: $('.chat-history')[0].scrollHeight}, 1000);
+			}
+
+		});
+	</script>
+
+</body>
+</html>
